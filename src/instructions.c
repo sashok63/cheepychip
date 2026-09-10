@@ -19,6 +19,12 @@ void instruction_execution(chip8_t *chip8)
     uint8_t screen_height = 0;
     uint8_t screen_width = 0;
 
+    if (chip8->PC >= RAM_SIZE - 1) {
+        fprintf(stderr, "Error: Program Counter out of bounds. PC: 0x%X\n", chip8->PC);
+        chip8->state = QUIT;
+        return;
+    }
+
     chip8->inst.opcode = (chip8->ram[chip8->PC] << 8) | chip8->ram[chip8->PC + 1];
     chip8->PC += 2;
 
@@ -53,13 +59,23 @@ void instruction_execution(chip8_t *chip8)
                 case 0x00FB:
                     chip8->inst.N = chip8->inst.opcode & 0x0F;
 
-                    screen_height = chip8->hr.HiRes ? SCREEN_HEIGHT_S : SCREEN_HEIGHT;
-                    screen_width = chip8->hr.HiRes ? SCREEN_WIDTH_S : SCREEN_WIDTH;
+                    screen_height = !chip8->mod.CHIP ? SCREEN_HEIGHT_S : SCREEN_HEIGHT;
+                    screen_width = !chip8->mod.CHIP ? SCREEN_WIDTH_S : SCREEN_WIDTH;
+                    uint8_t shift_right = (!chip8->mod.CHIP && !chip8->hr.HiRes) ? 8 : 4;
 
                     for (uint8_t y = 0; y < screen_height; y++)
                     {
                         memmove(&chip8->gfx[y * screen_width + 4], &chip8->gfx[y * screen_width], (screen_width - 4) * sizeof(chip8->gfx[0]));
                         memset(&chip8->gfx[y * screen_width], 0, 4 * sizeof(chip8->gfx[0]));
+                        for (int8_t x = screen_width - 1; x >= shift_right; x--)
+                        {
+                            chip8->gfx[y * screen_width + x] = chip8->gfx[y * screen_width + (x - shift_right)];
+                        }
+
+                        for (int x = 0; x < shift_right; x++)
+                        {
+                            chip8->gfx[y * screen_width + x] = 0;
+                        }
                     }
 
                     chip8->draw_flag = true;
@@ -69,13 +85,23 @@ void instruction_execution(chip8_t *chip8)
                 case 0x00FC:
                     chip8->inst.N = chip8->inst.opcode & 0x0F;
 
-                    screen_height = chip8->hr.HiRes ? SCREEN_HEIGHT_S : SCREEN_HEIGHT;
-                    screen_width = chip8->hr.HiRes ? SCREEN_WIDTH_S : SCREEN_WIDTH;
+                    screen_height = !chip8->mod.CHIP ? SCREEN_HEIGHT_S : SCREEN_HEIGHT;
+                    screen_width = !chip8->mod.CHIP ? SCREEN_WIDTH_S : SCREEN_WIDTH;
+                    uint8_t shift_left = (!chip8->mod.CHIP && !chip8->hr.HiRes) ? 8 : 4;
 
                     for (uint8_t y = 0; y < screen_height; y++)
                     {
                         memmove(&chip8->gfx[y * screen_width], &chip8->gfx[y * screen_width + 4], (screen_width - 4) * sizeof(chip8->gfx[0]));
                         memset(&chip8->gfx[y * screen_width + screen_width - 4], 0, 4 * sizeof(chip8->gfx[0]));
+                        for (int8_t x = 0; x < screen_width - shift_left; x++)
+                        {
+                            chip8->gfx[y * screen_width + x] = chip8->gfx[y * screen_width + (x + shift_left)];
+                        }
+
+                        for (int x = screen_width - shift_left; x < screen_width; x++)
+                        {
+                            chip8->gfx[y * screen_width + x] = 0;
+                        }
                     }
 
                     chip8->draw_flag = true;
@@ -100,11 +126,26 @@ void instruction_execution(chip8_t *chip8)
                 case 0x00CF:
                     chip8->inst.N = chip8->inst.opcode & 0x0F;
 
-                    screen_height = chip8->hr.HiRes ? SCREEN_HEIGHT_S : SCREEN_HEIGHT;
-                    screen_width = chip8->hr.HiRes ? SCREEN_WIDTH_S : SCREEN_WIDTH;
+                    screen_height = !chip8->mod.CHIP ? SCREEN_HEIGHT_S : SCREEN_HEIGHT;
+                    screen_width = !chip8->mod.CHIP ? SCREEN_WIDTH_S : SCREEN_WIDTH;
+                    uint8_t shift_down = (!chip8->mod.CHIP && !chip8->hr.HiRes) ? chip8->inst.N * 2 : chip8->inst.N;
 
                     memmove(&chip8->gfx[chip8->inst.N * screen_width], &chip8->gfx[0], (screen_height - chip8->inst.N) * screen_width * sizeof(chip8->gfx[0]));
                     memset(&chip8->gfx[0], 0, chip8->inst.N * screen_width * sizeof(chip8->gfx[0]));
+                    for (int y = screen_height - 1; y >= shift_down; y--)
+                    {
+                        for (int x = 0; x < screen_width; x++)
+                        {
+                            chip8->gfx[y * screen_width + x] = chip8->gfx[(y - shift_down) * screen_width + x];
+                        }
+                    }
+                    for (int y = 0; y < shift_down; y++)
+                    {
+                        for (int x = 0; x < screen_width; x++)
+                        {
+                            chip8->gfx[y * screen_width + x] = 0;
+                        }
+                    }
 
                     chip8->draw_flag = true;
                     break;
@@ -112,6 +153,7 @@ void instruction_execution(chip8_t *chip8)
                 //Opcode 00FD: Exit the interpreter (halt the program)
                 case 0x00FD:
                     printf("EXIT\n");
+                    chip8->state = QUIT;
                     break;
 
                 default:
@@ -373,6 +415,10 @@ void instruction_execution(chip8_t *chip8)
 
                 for (uint8_t y = 0; y < chip8->inst.N; y++)
                 {
+                    if (chip8->I + y >= RAM_SIZE)
+                    {
+                        break;
+                    }
                     const uint8_t pixel_data = chip8->ram[chip8->I + y];
                     x_coord = original_x;
 
@@ -411,6 +457,10 @@ void instruction_execution(chip8_t *chip8)
 
                     for (uint8_t byte = 0; byte < 16; byte++)
                     {
+                        if (chip8->I + 2 * byte + 1 >= RAM_SIZE)
+                        {
+                            break;
+                        }
                         uint8_t sprite_data1 = chip8->ram[chip8->I + 2 * byte];
                         uint8_t sprite_data2 = chip8->ram[chip8->I + 2 * byte + 1];
 
@@ -447,6 +497,10 @@ void instruction_execution(chip8_t *chip8)
                 {
                     for (uint8_t byte = 0; byte < chip8->inst.N; byte++)
                     {
+                        if (chip8->I + byte >= RAM_SIZE)
+                        {
+                            break;
+                        }
                         const uint8_t sprite_data = chip8->ram[chip8->I + byte];
                         uint8_t x_coord = chip8->V[chip8->inst.X];
                         uint8_t y_coord = chip8->V[chip8->inst.Y] + byte;
@@ -609,9 +663,15 @@ void instruction_execution(chip8_t *chip8)
                 case 0xF033:
                     chip8->inst.X = (chip8->inst.opcode >> 8) & 0x0F;
 
-                    chip8->ram[chip8->I + 0] = (chip8->V[chip8->inst.X] / 100) % 10;
-                    chip8->ram[chip8->I + 1] = (chip8->V[chip8->inst.X] / 10) % 10;
-                    chip8->ram[chip8->I + 2] = (chip8->V[chip8->inst.X] / 1) % 10;
+                    if (chip8->I < RAM_SIZE) {
+                        chip8->ram[chip8->I + 0] = (chip8->V[chip8->inst.X] / 100) % 10;
+                    }
+                    if (chip8->I + 1 < RAM_SIZE) {
+                        chip8->ram[chip8->I + 1] = (chip8->V[chip8->inst.X] / 10) % 10;
+                    }
+                    if (chip8->I + 2 < RAM_SIZE) {
+                        chip8->ram[chip8->I + 2] = (chip8->V[chip8->inst.X] / 1) % 10;
+                    }
                     break;
 
                 //Opcode FX55: Stores from V0 to VX (including VX) in memory,
@@ -626,8 +686,6 @@ void instruction_execution(chip8_t *chip8)
                         {
                             chip8->ram[chip8->I++] = chip8->V[i];
                         }
-
-                        chip8->I += chip8->inst.X + 1;
                     }
                     else if (chip8->mod.SUPERCHIP == true)
                     {
@@ -635,8 +693,6 @@ void instruction_execution(chip8_t *chip8)
                         {
                             chip8->ram[chip8->I + i] = chip8->V[i];
                         }
-
-                        chip8->I += chip8->inst.X;
                     }
                     break;
 
@@ -652,8 +708,6 @@ void instruction_execution(chip8_t *chip8)
                         {
                             chip8->V[i] = chip8->ram[chip8->I++];
                         }
-
-                        chip8->I += chip8->inst.X + 1;
                     }
                     else if (chip8->mod.SUPERCHIP == true)
                     {
@@ -661,23 +715,21 @@ void instruction_execution(chip8_t *chip8)
                         {
                             chip8->V[i] = chip8->ram[chip8->I + i];
                         }
-
-                        chip8->I += chip8->inst.X;
                     }
                     break;
 
                 //Opcode FX75: Stores V0 to VX (including VX) in RPL user flags (X <= 7)
                 case 0xF075:
                     chip8->inst.X = (chip8->inst.opcode >> 8) & 0x0F;
-                    assert(chip8->inst.X <= 7);
-                    memcpy(chip8->RPL, chip8->V, chip8->inst.X + 1);
+                    uint8_t copy_count_75 = chip8->inst.X > 7 ? 8 : chip8->inst.X + 1;
+                    memcpy(chip8->RPL, chip8->V, copy_count_75);
                     break;
 
                 //Opcode FX85: Fills V0 to VX (including VX) with values from RPL user flags (X <= 7)
                 case 0xF085:
                     chip8->inst.X = (chip8->inst.opcode >> 8) & 0x0F;   
-                    assert(chip8->inst.X <= 7);
-                    memcpy(chip8->V, chip8->RPL, chip8->inst.X + 1);
+                    uint8_t copy_count_85 = chip8->inst.X > 7 ? 8 : chip8->inst.X + 1;
+                    memcpy(chip8->V, chip8->RPL, copy_count_85);
                     break;
                     
                 default:
@@ -694,6 +746,12 @@ void instruction_execution(chip8_t *chip8)
 
 void db_instruction_execution(chip8_t *chip8)
 {
+    if (chip8->PC >= RAM_SIZE - 1) {
+        fprintf(stderr, "Error: Program Counter out of bounds. PC: 0x%X\n", chip8->PC);
+        chip8->state = QUIT;
+        return;
+    }
+
     chip8->inst.opcode = (chip8->ram[chip8->PC] << 8) | chip8->ram[chip8->PC + 1];
     printf("Executing instruction: 0x%X at PC: 0x%X\n", chip8->inst.opcode, chip8->PC);
 
