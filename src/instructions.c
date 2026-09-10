@@ -678,14 +678,19 @@ void instruction_execution(chip8_t *chip8)
                     {
                         for (uint8_t i = 0; i <= chip8->inst.X; ++i)
                         {
-                            chip8->ram[chip8->I++] = chip8->V[i];
+                            if (chip8->I < RAM_SIZE) {
+                                chip8->ram[chip8->I] = chip8->V[i];
+                            }
+                            chip8->I++;
                         }
                     }
                     else if (chip8->mod.SUPERCHIP == true)
                     {
                         for (uint8_t i = 0; i <= chip8->inst.X; ++i)
                         {
-                            chip8->ram[chip8->I + i] = chip8->V[i];
+                            if (chip8->I + i < RAM_SIZE) {
+                                chip8->ram[chip8->I + i] = chip8->V[i];
+                            }
                         }
                     }
                     break;
@@ -700,14 +705,19 @@ void instruction_execution(chip8_t *chip8)
                     {
                         for (uint8_t i = 0; i <= chip8->inst.X; ++i)
                         {
-                            chip8->V[i] = chip8->ram[chip8->I++];
+                            if (chip8->I < RAM_SIZE) {
+                                chip8->V[i] = chip8->ram[chip8->I];
+                            }
+                            chip8->I++;
                         }
                     }
                     else if (chip8->mod.SUPERCHIP == true)
                     {
                         for (uint8_t i = 0; i <= chip8->inst.X; ++i)
                         {
-                            chip8->V[i] = chip8->ram[chip8->I + i];
+                            if (chip8->I + i < RAM_SIZE) {
+                                chip8->V[i] = chip8->ram[chip8->I + i];
+                            }
                         }
                     }
                     break;
