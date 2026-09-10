@@ -635,9 +635,15 @@ void instruction_execution(chip8_t *chip8)
                 case 0xF033:
                     chip8->inst.X = (chip8->inst.opcode >> 8) & 0x0F;
 
-                    chip8->ram[chip8->I + 0] = (chip8->V[chip8->inst.X] / 100) % 10;
-                    chip8->ram[chip8->I + 1] = (chip8->V[chip8->inst.X] / 10) % 10;
-                    chip8->ram[chip8->I + 2] = (chip8->V[chip8->inst.X] / 1) % 10;
+                    if (chip8->I < RAM_SIZE) {
+                        chip8->ram[chip8->I + 0] = (chip8->V[chip8->inst.X] / 100) % 10;
+                    }
+                    if (chip8->I + 1 < RAM_SIZE) {
+                        chip8->ram[chip8->I + 1] = (chip8->V[chip8->inst.X] / 10) % 10;
+                    }
+                    if (chip8->I + 2 < RAM_SIZE) {
+                        chip8->ram[chip8->I + 2] = (chip8->V[chip8->inst.X] / 1) % 10;
+                    }
                     break;
 
                 //Opcode FX55: Stores from V0 to VX (including VX) in memory,
