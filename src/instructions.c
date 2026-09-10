@@ -409,6 +409,10 @@ void instruction_execution(chip8_t *chip8)
 
                 for (uint8_t y = 0; y < chip8->inst.N; y++)
                 {
+                    if (chip8->I + y >= RAM_SIZE)
+                    {
+                        break;
+                    }
                     const uint8_t pixel_data = chip8->ram[chip8->I + y];
                     x_coord = original_x;
 
@@ -447,6 +451,10 @@ void instruction_execution(chip8_t *chip8)
 
                     for (uint8_t byte = 0; byte < 16; byte++)
                     {
+                        if (chip8->I + 2 * byte + 1 >= RAM_SIZE)
+                        {
+                            break;
+                        }
                         uint8_t sprite_data1 = chip8->ram[chip8->I + 2 * byte];
                         uint8_t sprite_data2 = chip8->ram[chip8->I + 2 * byte + 1];
 
@@ -483,6 +491,10 @@ void instruction_execution(chip8_t *chip8)
                 {
                     for (uint8_t byte = 0; byte < chip8->inst.N; byte++)
                     {
+                        if (chip8->I + byte >= RAM_SIZE)
+                        {
+                            break;
+                        }
                         const uint8_t sprite_data = chip8->ram[chip8->I + byte];
                         uint8_t x_coord = chip8->V[chip8->inst.X];
                         uint8_t y_coord = chip8->V[chip8->inst.Y] + byte;
