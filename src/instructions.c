@@ -19,6 +19,12 @@ void instruction_execution(chip8_t *chip8)
     uint8_t screen_height = 0;
     uint8_t screen_width = 0;
 
+    if (chip8->PC >= RAM_SIZE - 1) {
+        fprintf(stderr, "Error: Program Counter out of bounds. PC: 0x%X\n", chip8->PC);
+        chip8->state = QUIT;
+        return;
+    }
+
     chip8->inst.opcode = (chip8->ram[chip8->PC] << 8) | chip8->ram[chip8->PC + 1];
     chip8->PC += 2;
 
@@ -722,6 +728,12 @@ void instruction_execution(chip8_t *chip8)
 
 void db_instruction_execution(chip8_t *chip8)
 {
+    if (chip8->PC >= RAM_SIZE - 1) {
+        fprintf(stderr, "Error: Program Counter out of bounds. PC: 0x%X\n", chip8->PC);
+        chip8->state = QUIT;
+        return;
+    }
+
     chip8->inst.opcode = (chip8->ram[chip8->PC] << 8) | chip8->ram[chip8->PC + 1];
     printf("Executing instruction: 0x%X at PC: 0x%X\n", chip8->inst.opcode, chip8->PC);
 
