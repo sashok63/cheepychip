@@ -65,6 +65,8 @@ void instruction_execution(chip8_t *chip8)
 
                     for (uint8_t y = 0; y < screen_height; y++)
                     {
+                        memmove(&chip8->gfx[y * screen_width + 4], &chip8->gfx[y * screen_width], (screen_width - 4) * sizeof(chip8->gfx[0]));
+                        memset(&chip8->gfx[y * screen_width], 0, 4 * sizeof(chip8->gfx[0]));
                         for (int8_t x = screen_width - 1; x >= shift_right; x--)
                         {
                             chip8->gfx[y * screen_width + x] = chip8->gfx[y * screen_width + (x - shift_right)];
@@ -89,6 +91,8 @@ void instruction_execution(chip8_t *chip8)
 
                     for (uint8_t y = 0; y < screen_height; y++)
                     {
+                        memmove(&chip8->gfx[y * screen_width], &chip8->gfx[y * screen_width + 4], (screen_width - 4) * sizeof(chip8->gfx[0]));
+                        memset(&chip8->gfx[y * screen_width + screen_width - 4], 0, 4 * sizeof(chip8->gfx[0]));
                         for (int8_t x = 0; x < screen_width - shift_left; x++)
                         {
                             chip8->gfx[y * screen_width + x] = chip8->gfx[y * screen_width + (x + shift_left)];
@@ -126,6 +130,8 @@ void instruction_execution(chip8_t *chip8)
                     screen_width = !chip8->mod.CHIP ? SCREEN_WIDTH_S : SCREEN_WIDTH;
                     uint8_t shift_down = (!chip8->mod.CHIP && !chip8->hr.HiRes) ? chip8->inst.N * 2 : chip8->inst.N;
 
+                    memmove(&chip8->gfx[chip8->inst.N * screen_width], &chip8->gfx[0], (screen_height - chip8->inst.N) * screen_width * sizeof(chip8->gfx[0]));
+                    memset(&chip8->gfx[0], 0, chip8->inst.N * screen_width * sizeof(chip8->gfx[0]));
                     for (int y = screen_height - 1; y >= shift_down; y--)
                     {
                         for (int x = 0; x < screen_width; x++)
